@@ -1,0 +1,12 @@
+.env
+.env.*
+venv/
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.git/
+data/progress.db
+exports/
+Dockerfile
+.dockerignore

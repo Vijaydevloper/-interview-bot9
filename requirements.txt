@@ -1,0 +1,11 @@
+streamlit>=1.45
+pandas
+scikit-learn
+pypdf
+python-docx
+httpx
+python-dotenv
+beautifulsoup4
+mcp>=1.2  # works with 1.x and 2.x
+langgraph>=0.2
+pytest

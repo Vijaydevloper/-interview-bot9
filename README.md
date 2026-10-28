@@ -1,0 +1,79 @@
+# Interview Prep Coach
+
+Streamlit app that quizzes you from your own study notes, scores each answer with a fixed rubric, tracks progress in SQLite, and checks official docs when your notes don't cover a question. LLM calls go to **Groq**; orchestration is a **LangGraph** graph; all data access goes through **MCP** servers.
+
+## Run
+
+```bash
+pip install -r requirements.txt
+# put your key in .env (copy .env.example): GROQ_API_KEY=gsk_...   free key: console.groq.com
+streamlit run app.py
+```
+
+The key lives in the `.env` file next to `app.py` (it is git-ignored). A real `export GROQ_API_KEY=...` still wins over `.env`, and you can also paste a key in the sidebar for one session. Restart the app after editing `.env`.
+
+Without a key the app runs in offline mode (heading-based questions, keyword-check scoring) so you can test everything else.
+
+## Tabs
+
+- **Practice**: pick a topic (or "Smart pick", which favours weak and long-unpractised topics), difficulty (Beginner/Intermediate/Advanced), type (Conceptual/Coding/Mixed) and an optional focus. Answers are scored 0-10 (correctness 4, key concepts 3, clarity 2, example 1; the example point is dropped when it doesn't apply) and saved with topic, type and level.
+- **MCQ practice**: 10 multiple-choice questions taken from your notes (`data/mcq_bank.json`, works offline). Pick one option per question, submit, and see your score with an explanation and source for each. Every answer is saved to your progress (10 for correct, 0 for wrong, mode "MCQ"). With a Groq key you can instead generate a fresh set of 10 from any topic.
+- **Chatbot practice**: a mock interviewer you chat with. Start an interview for a topic and level; it asks a question, you reply in the chat box, and it gives feedback (right, missing, score out of 10) and asks the next one. Ask it for a hint, the answer, or to explain something; its replies are grounded in passages retrieved from your notes for each message. Needs a Groq key for real conversation; offline it only asks heading-based questions and keyword-checks your answers.
+- **Explain a concept**: searches your notes first; if they fall short and the toggle is on, fetches official docs and labels which part came from where. If neither has it, it says so instead of guessing.
+- **Revision notes**: a revision sheet for a topic from your notes plus your recent mistakes; download it or save it to `exports/`.
+- **My progress**: attempt history, score over time, topics to revisit.
+- **Document library**: what is indexed per topic; add files here.
+
+The slide decks were converted to Markdown text (`.md`) so the project stays small; the indexed text is identical. Study files live in `data/docs/<topic>/` (DOCX, PPTX, PDF, TXT, MD); the folder name is the topic. Included topics: python, pandas (NumPy & Pandas), sql, ml, visualization, deployment, interview_questions, roadmap, rag, llm, transformers, agentic_ai, mcp, computer_vision. DOCX headings and tables and PPTX slide titles are indexed, so questions and sources name the section or slide they came from.
+
+## How it works
+
+```
+Streamlit tab --> agent.run(task, ...)   (LangGraph)
+  question : [pick_topic] -> prepare_question
+  evaluate : evaluate -> log_attempt
+  explain  : retrieve -> (notes cover it | web off) -> answer
+                      \-> lookup_docs -> answer
+  revise   : revise
+  mcq      : mcq   (fresh sets only)
+  chat     : chat  (search notes for your message -> interviewer reply)
+every data access = an MCP tool call (stdio):
+  rag      search_notes, sample_notes, list_topics, library_summary
+  progress log_answer, log_answers, get_weak_topics, get_topic_stats, get_history
+  docs     search_docs, fetch_doc   (trusted-domain whitelist)
+  notes    save_summary
+```
+
+Each result has a "How this was produced" expander listing the steps and MCP calls. The four servers also work on their own with any MCP client (`python rag_server.py`, etc.).
+
+| File | Role |
+|---|---|
+| `app.py`, `ui.py` | Streamlit UI and theme |
+| `agent.py` | the LangGraph graph (all four tasks) |
+| `llm.py` | Groq client, question generation, rubric scoring, explanations, revision sheets; offline fallback |
+| `mcq.py`, `data/mcq_bank.json` | MCQ question bank, shuffling, grading, validation |
+| `config.py` | loads `.env` |
+| `rag.py`, `rag_tools.py`, `rag_server.py` | ingestion, chunking, TF-IDF retrieval; MCP tools |
+| `progress_tools.py`, `progress_server.py` | SQLite + `log_answer`, `get_weak_topics`, stats, history |
+| `docs_tools.py`, `docs_server.py` | `search_docs`, `fetch_doc` |
+| `notes_tools.py`, `notes_server.py` | `save_summary` |
+| `scheduler.py` | topic weighting for Smart pick |
+| `mcp_client.py`, `mcp_compat.py`, `tools.py` | MCP stdio client (mcp 1.x and 2.x); `USE_MCP=0` calls the tools in-process |
+
+## Config
+
+`GROQ_API_KEY` (usually in `.env`), `GROQ_MODEL` (default `llama-3.3-70b-versatile`), `GROQ_BASE_URL`, `GROQ_TIMEOUT`, `STUDY_DOCS`, `PROGRESS_DB`, `EXPORT_DIR`, `USE_MCP`.
+
+## Tests
+
+`pytest` (builds its own tiny corpus; Groq is tested against a local mock server; `tests/test_app_flow.py` runs the app with a stand-in `streamlit`, and the agent tests use a stand-in `langgraph` when the real one isn't installed).
+
+## Known limits
+
+- Scores are AI-generated; check consistency before relying on the progress page. Offline mode is only a keyword heuristic.
+- Groq's free tier is rate limited; the client waits and retries on 429, then reports it.
+- When Groq is on, the note passages used for a question are sent to Groq.
+- Each MCP call starts a short-lived process (about 1-3 s with scikit-learn), so each action takes a few seconds.
+- TF-IDF matches words (with light stemming), not meaning; a question that names a topic can count as "covered" from a heading match. Move to embeddings if retrieval misses paraphrases.
+- `search_docs` scrapes DuckDuckGo HTML, so it can break; failures are shown, never papered over.
+- The scheduler is a weighting rule, not full SM-2 with review dates.
