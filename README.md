@@ -62,7 +62,7 @@ Each result has a "How this was produced" expander listing the steps and MCP cal
 
 ## Config
 
-`GROQ_API_KEY` (usually in `.env`), `GROQ_MODEL` (default `llama-3.3-70b-versatile`), `GROQ_BASE_URL`, `GROQ_TIMEOUT`, `STUDY_DOCS`, `PROGRESS_DB`, `EXPORT_DIR`, `USE_MCP`.
+`GROQ_API_KEY` (usually in `.env`), `GROQ_MODEL` (default `openai/gpt-oss-120b`), `GROQ_BASE_URL`, `GROQ_TIMEOUT`, `STUDY_DOCS`, `PROGRESS_DB`, `EXPORT_DIR`, `USE_MCP`.
 
 ## Tests
 

@@ -14,7 +14,7 @@ from collections import Counter
 
 import config  # noqa: F401  (loads GROQ_API_KEY etc. from .env)
 
-MODEL = os.environ.get("GROQ_MODEL", "llama-3.3-70b-versatile")
+MODEL = os.environ.get("GROQ_MODEL", "openai/gpt-oss-120b")
 BASE_URL = os.environ.get("GROQ_BASE_URL", "https://api.groq.com/openai/v1")
 
 RUBRIC = {"correctness": 4, "coverage": 3, "clarity": 2, "example": 1}
@@ -29,7 +29,7 @@ def model_name() -> str:
 
 
 _NOT_CHAT = ("whisper", "orpheus", "guard", "safeguard", "tts", "embed")
-_PREFERRED = ["llama-3.3-70b-versatile", "openai/gpt-oss-120b", "openai/gpt-oss-20b", "llama-3.1-8b-instant"]
+_PREFERRED = ["openai/gpt-oss-120b", "openai/gpt-oss-20b", "llama-3.3-70b-versatile", "llama-3.1-8b-instant"]
 
 
 def available_models() -> list[str]:
