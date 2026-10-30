@@ -151,7 +151,7 @@ def run_app(st, clicks=(), inputs=None, **state):
     st.session_state.update(state)
     st.inputs = dict(inputs or {})
     st.clicks = set(clicks)
-    src = (ROOT / "app.py").read_text()
+    src = (ROOT / "app.py").read_text(encoding="utf-8")
     for _ in range(6):
         st.log.clear()
         try:
